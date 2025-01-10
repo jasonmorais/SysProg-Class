@@ -22,20 +22,23 @@ Please provide answers to these questions using markdown notation and place them
 1. Select with an `x` the platform you will be using for your course deliverables:
 
     - [ ] drexel's tux cluster
-    - [ ] WSL on Windows
+    - [x] WSL on Windows
     - [ ] Orbstack on MacOs
     - [ ] VMWare Fusion
     - [ ] Somthing else (put name here)
 
 2. I have installed my virtual machine, tested it, feel comfortable using it, and validated that the required software is installed:
 
-    - [ ] YES
+    - [x] YES
     - [ ] N/A - I plan to use tux
     - [ ] NO - Not Yet
 
 
 3. Please provide a link to the repository you are using for this class.
+   https://github.com/jasonmorais/SysProg-Class/edit/main/assignments/0-Warmup/
 
-4. Briefly describe what you want to get out of this class.
+5. Briefly describe what you want to get out of this class.
+   I have written go and c before, so I wish to refine that a bit since it has been a year or so since I have written in it, and also expand on areas in the class besides that and continue off from 281.
 
-5. Briefly describe any concerns you might be having with being successful in this class (if any).
+7. Briefly describe any concerns you might be having with being successful in this class (if any).
+   No concerns, probably just the growing pains as I will for sure run into an issue with the wsl at some point during the first real assignment, but besides that should be fine.
