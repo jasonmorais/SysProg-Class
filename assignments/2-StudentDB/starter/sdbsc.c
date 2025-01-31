@@ -107,12 +107,11 @@ int add_student(int fd, int id, char *fname, char *lname, int gpa){
         return ERR_DB_FILE;
     }
 
-    student_t newStudent = {
-        id,
-        gpa,
-        fname,
-        lname
-    };
+    student_t newStudent;
+    newStudent.id = id;
+    newStudent.gpa = gpa;
+    strncpy(newStudent.fname, fname, sizeof(newStudent.fname));
+    strncpy(newStudent.lname, lname, sizeof(newStudent.lname));
 
     if(lseek(fd, (id-1) * sizeof(student_t), SEEK_SET) == -1){
         perror(M_ERR_DB_READ);
@@ -122,7 +121,7 @@ int add_student(int fd, int id, char *fname, char *lname, int gpa){
     student_t* tempStudent = NULL;
     get_student(fd, id, tempStudent);
     if(tempStudent != NULL){
-        printf(M_ERR_DB_ADD_DUP);
+        printf(M_ERR_DB_ADD_DUP, id);
         return ERR_DB_OP;
     }
 
@@ -132,7 +131,7 @@ int add_student(int fd, int id, char *fname, char *lname, int gpa){
         return ERR_DB_FILE;
     }
 
-    printf(M_STD_ADDED);
+    printf(M_STD_ADDED, id);
     return NO_ERROR;
 }
 
@@ -167,14 +166,14 @@ int del_student(int fd, int id){
     int result = get_student(fd, id, &deletionStudent);
 
     if(result == SRCH_NOT_FOUND){
-        printf(M_STD_NOT_FND_MSG);
+        printf(M_STD_NOT_FND_MSG, id);
         return ERR_DB_OP;
     }
     else if(result != NO_ERROR){
         return result;
     }
 
-    if(lseek(fd, (id - 1)* sizeof(student_t), SEEK_SET) != -1){
+    if(lseek(fd, (id - 1) * sizeof(student_t), SEEK_SET) == -1){
         perror(M_ERR_DB_READ);
         return ERR_DB_FILE;
     }
@@ -187,7 +186,7 @@ int del_student(int fd, int id){
         return ERR_DB_FILE;
     }
 
-    printf(M_STD_DEL_MSG);
+    printf(M_STD_DEL_MSG, id);
     return NO_ERROR;
 }
 
@@ -239,7 +238,7 @@ int count_db_records(int fd){
         printf(M_DB_EMPTY);
     }
     else{
-        printf("%s%d", M_DB_RECORD_CNT, count);
+        printf(M_DB_RECORD_CNT, count);
     }
 
     return count;
@@ -287,9 +286,27 @@ int print_db(int fd){
     ssize_t bytes;
     int first = 1; // boolean default true
 
-    
+    while((bytes = read(fd, &studentPointer, sizeof(student_t))) > 0){
+        if(memcmp(&studentPointer, &EMPTY_STUDENT_RECORD, sizeof(student_t)) != 0){
+            if(first){
+                printf(STUDENT_PRINT_HDR_STRING, "ID", "FIRST NAME", "LAST_NAME", "GPA");
+                first = 0;       
+            }
+            float gpa = studentPointer.gpa / 100.0;
+            printf(STUDENT_PRINT_FMT_STRING, studentPointer.id, studentPointer.fname, studentPointer.lname, gpa);
+        }
+    }
 
+    if(bytes < 0){
+        perror(M_ERR_DB_READ);
+        return ERR_DB_FILE;
+    }
 
+    if(first){
+        printf("Database is empty.\n");
+    }
+
+    return NO_ERROR;
 }
 
 /*
@@ -321,7 +338,14 @@ int print_db(int fd){
  *            
  */
 void print_student(student_t *s){
-    printf(M_NOT_IMPL);
+    if(s == NULL || s->id == 0){
+        printf(M_ERR_STD_PRINT);
+        return;
+    }
+
+    printf(STUDENT_PRINT_HDR_STRING, "ID", "FIRST NAME", "LAST_NAME", "GPA");
+    float gpa = s->gpa / 100.0;
+    printf(STUDENT_PRINT_FMT_STRING, s->id, s->fname, s->lname, gpa);
 }
 
 /*
@@ -466,7 +490,6 @@ int main(int argc, char *argv[]){
     if (fd < 0){
         exit(EXIT_FAIL_DB);
     }
-
     //set rc to the return code of the operation to ensure the program
     //use that to determine the proper exit_code.  Look at the header
     //sdbsc.h for expected values. 
@@ -521,6 +544,7 @@ int main(int argc, char *argv[]){
                 exit_code = EXIT_FAIL_ARGS;
                 break;
             }
+
             id = atoi(argv[2]);
             rc = del_student(fd, id);
             if (rc < 0)
