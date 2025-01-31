@@ -303,7 +303,7 @@ int print_db(int fd){
     }
 
     if(first){
-        printf("Database is empty.\n");
+        printf(M_DB_EMPTY);
     }
 
     return NO_ERROR;
