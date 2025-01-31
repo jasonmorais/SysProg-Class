@@ -5,7 +5,8 @@ Please answer the following questions and submit in your repo for the second ass
 
 1. In this assignment I asked you provide an implementation for the `get_student(...)` function because I think it improves the overall design of the database application.   After you implemented your solution do you agree that externalizing `get_student(...)` into it's own function is a good design strategy?  Briefly describe why or why not.
 
-    > **Answer**:  _start here_
+    > **Answer**:  I would say yes purely based on the factor that this is code i constantly used to check if
+    the student is present in the DB. It saves duplication of code in the future, as the find student, delete student, and add student commands find it useful to check if it exists or not.
 
 2. Another interesting aspect of the `get_student(...)` function is how its function prototype requires the caller to provide the storage for the `student_t` structure:
 
@@ -39,7 +40,7 @@ Please answer the following questions and submit in your repo for the second ass
     ```
     Can you think of any reason why the above implementation would be a **very bad idea** using the C programming language?  Specifically, address why the above code introduces a subtle bug that could be hard to identify at runtime? 
 
-    > **ANSWER:** _start here_
+    > **ANSWER:** In terms of c it would be messy in terms of keeping track of that memory address, when you return a memory address from that function, the memory address / variable being referenced is a local variable within the scope of the function, so you can lose track of it. If the scope of the function goes away, so does the environment the pointer was made in, and thus you have a weird behavior with the returned pointer to that variable made in that scope elsewhere in the code.
 
 3. Another way the `get_student(...)` function could be implemented is as follows:
 
@@ -72,7 +73,7 @@ Please answer the following questions and submit in your repo for the second ass
     ```
     In this implementation the storage for the student record is allocated on the heap using `malloc()` and passed back to the caller when the function returns. What do you think about this alternative implementation of `get_student(...)`?  Address in your answer why it work work, but also think about any potential problems it could cause.  
     
-    > **ANSWER:** _start here_  
+    > **ANSWER:** It would avoid the previous error but the problem I have with this is that the external code is responsible for freeing the memory used by malloc, which chances are if you are using this variable further on in the code will be something you forget and later on quite hard to debug. I would stick to passing in the pointer yourself purley based on the fact that the function is kept as dumb as possible and you don't have to manage memory as much with malloc.
 
 
 4. Lets take a look at how storage is managed for our simple database. Recall that all student records are stored on disk using the layout of the `student_t` structure (which has a size of 64 bytes).  Lets start with a fresh database by deleting the `student.db` file using the command `rm ./student.db`.  Now that we have an empty database lets add a few students and see what is happening under the covers.  Consider the following sequence of commands:
@@ -102,11 +103,11 @@ Please answer the following questions and submit in your repo for the second ass
 
     - Please explain why the file size reported by the `ls` command was 128 bytes after adding student with ID=1, 256 after adding student with ID=3, and 4160 after adding the student with ID=64? 
 
-        > **ANSWER:** _start here_
+        > **ANSWER:** Because it had to make space between the two ids, which is less than a populated space so it couldn't have been 128 per slot as per usual, but instead about half of that (about 64) for a NULL space plus the 256 from populated space at 128 a piece.
 
     -   Why did the total storage used on the disk remain unchanged when we added the student with ID=1, ID=3, and ID=63, but increased from 4K to 8K when we added the student with ID=64? 
 
-        > **ANSWER:** _start here_
+        > **ANSWER:** That would be because the memory allocations happen in allocations of 64 bytes, and then because the file system works in chunks, we now need another 64 byte chunk hence doubling the space.
 
     - Now lets add one more student with a large student ID number  and see what happens:
 
@@ -119,4 +120,4 @@ Please answer the following questions and submit in your repo for the second ass
         ```
         We see from above adding a student with a very large student ID (ID=99999) increased the file size to 6400000 as shown by `ls` but the raw storage only increased to 12K as reported by `du`.  Can provide some insight into why this happened?
 
-        > **ANSWER:**  _start here_
+        > **ANSWER:**  The file size increased to the max because it needed to allocate space for up to id 99999, however because we are in a sparse file system the actual raw storage only increase by the the placeholder null values and the single actual populated value, hence the actual raw storage isn't as high as it would be if we considered all of those areas populated. In summary while the file size itself increased, the actual raw storage was kept fairly small because its just placeholder values for the most part.
