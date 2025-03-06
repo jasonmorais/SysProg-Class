@@ -17,7 +17,7 @@ EOF
 # File: student_tests.sh
 # Create your unit tests suit in this file
 
-@test "ls | grep .c | wc -l" {
+@test "Muliple pipes put together pt1" {
     run "./dsh" <<EOF
 ls | grep .c | wc -l
 EOF
@@ -42,7 +42,7 @@ EOF
     [ "$status" -eq 0 ]
 }
 
-@test "cat non_existent_file | grep anything" {
+@test "Cat non existent file" {
     run "./dsh" <<EOF
 cat non_existent_file | grep anything
 EOF
@@ -67,7 +67,7 @@ EOF
     [ "$status" -eq 0 ]
 }
 
-@test "echo hello | grep hello | wc -w" {
+@test "Multiple pipes put together pt2" {
     run "./dsh" <<EOF
 echo hello | grep hello | wc -w
 EOF
@@ -92,32 +92,7 @@ EOF
     [ "$status" -eq 0 ]
 }
 
-@test "echo test | awk '{print }' | grep t" {
-    run "./dsh" <<EOF
-echo test | awk '{print }' | grep t
-EOF
-
-    # Strip all whitespace (spaces, tabs, newlines) from the output
-    stripped_output=$(echo "$output" | tr -d '[:space:]')
-
-    # Expected output with all whitespace removed for easier matching
-    expected_output="awk:1:unexpectedcharacter'''awk:1:unexpectedcharacter'''dsh3>dsh3>cmdloopreturned0"
-
-    # These echo commands will help with debugging and will only print
-    # if the test fails
-    echo "Captured stdout:" 
-    echo "Output: $output"
-    echo "Exit Status: $status"
-    echo "${stripped_output} -> ${expected_output}"
-
-    # Check exact match
-    [ "$stripped_output" = "$expected_output" ]
-
-    # Assertions
-    [ "$status" -eq 0 ]
-}
-
-@test "ls | tail -n 1" {
+@test "Tail command functions with ls" {
     run "./dsh" <<EOF
 ls | tail -n 1
 EOF
@@ -126,7 +101,7 @@ EOF
     stripped_output=$(echo "$output" | tr -d '[:space:]')
 
     # Expected output with all whitespace removed for easier matching
-    expected_output="makefiledsh3>dsh3>cmdloopreturned0"
+    expected_output="testfile.txtdsh3>dsh3>cmdloopreturned0"
 
     # These echo commands will help with debugging and will only print
     # if the test fails
@@ -142,7 +117,7 @@ EOF
     [ "$status" -eq 0 ]
 }
 
-@test "ls | grep non_existent_file" {
+@test "Grep non existent file" {
     run "./dsh" <<EOF
 ls | grep non_existent_file
 EOF
@@ -167,7 +142,7 @@ EOF
     [ "$status" -eq 0 ]
 }
 
-@test "Pipe with empty input (echo | grep hello)" {
+@test "Pipe with empty input" {
     run "./dsh" <<EOF
 echo | grep hello
 EOF
@@ -192,7 +167,7 @@ EOF
     [ "$status" -eq 0 ]
 }
 
-@test "Pipe with no output (echo hello | grep non_existent_word)" {
+@test "Pipe with no output" {
     run "./dsh" <<EOF
 echo "hello" | grep non_existent_word
 EOF
@@ -240,6 +215,147 @@ EOF
     # Assertions
     [ "$status" -eq 0 ]
 }
+
+
+#Previous Tests
+@test "Previous Tests - Change directory" {
+    run "./dsh" <<EOF
+cd ..
+ls
+EOF
+
+    # Strip all whitespace (spaces, tabs, newlines) from the output
+    stripped_output=$(echo "$output" | tr -d '[:space:]')
+
+    # Expected output with all whitespace removed for easier matching
+    expected_output="questions.mdreadme.mdstarterdsh3>dsh3>dsh3>cmdloopreturned0"
+
+    echo "Captured stdout:" 
+    echo "Output: $output"
+    echo "Exit Status: $status"
+    echo "${stripped_output} -> ${expected_output}"
+    # Assertions
+    [ "$stripped_output" = "$expected_output" ]
+}
+
+@test "Previous Tests - Change directory - no args" {
+    run "./dsh" <<EOF
+cd
+ls
+EOF
+    # Strip all whitespace (spaces, tabs, newlines) from the output
+    stripped_output=$(echo "$output" | tr -d '[:space:]')
+
+    # Expected output with all whitespace removed for easier matching
+    expected_output="batsdragon.cdshdsh_cli.cdshlib.cdshlib.hmakefiletestfile.txtdsh3>dsh3>dsh3>cmdloopreturned0"
+
+    echo "Captured stdout:" 
+    echo "Output: $output"
+    echo "Exit Status: $status"
+    echo "${stripped_output} -> ${expected_output}"
+    # Assertions
+    [ "$stripped_output" = "$expected_output" ]
+}
+
+@test "Previous Tests - Exit command" {
+    run "./dsh" <<EOF
+exit
+EOF
+
+    # Check if the shell exits (you may expect an empty output)
+    [ "$status" -eq 0 ]
+}
+
+@test "Previous Tests - Grep finds sentence in test file" {
+    run "./dsh" <<EOF
+grep stuff testfile.txt
+EOF
+    # Strip all whitespace (spaces, tabs, newlines) from the output
+    stripped_output=$(echo "$output" | tr -d '[:space:]')
+
+    # Expected output with all whitespace removed for easier matching
+    expected_output="istherestuffwithinthisfile?whoknowsdsh3>dsh3>cmdloopreturned0"
+
+    echo "Captured stdout:" 
+    echo "Output: $output"
+    echo "Exit Status: $status"
+    echo "${stripped_output} -> ${expected_output}"
+    # Assertions
+    [ "$stripped_output" = "$expected_output" ]
+}
+
+@test "Previous Tests - Empty Command gives no commands message" {
+    run "./dsh" <<EOF
+
+EOF
+    # Strip all whitespace (spaces, tabs, newlines) from the output
+    stripped_output=$(echo "$output" | tr -d '[:space:]')
+
+    # Expected output with all whitespace removed for easier matching
+    expected_output="dsh3>warning:nocommandsprovideddsh3>cmdloopreturned0"
+
+    echo "Captured stdout:" 
+    echo "Output: $output"
+    echo "Exit Status: $status"
+    echo "${stripped_output} -> ${expected_output}"
+    # Assertions
+    [ "$stripped_output" = "$expected_output" ]
+}
+
+@test "Invalid command with special characters" {
+    run "./dsh" <<EOF
+ls @#$%^&*()
+EOF
+    stripped_output=$(echo "$output" | tr -d '[:space:]')
+    expected_output="ls:cannotaccess'@#$%^&*()':Nosuchfileordirectorydsh3>dsh3>cmdloopreturned0"
+     echo "Captured stdout:" 
+    echo "Output: $output"
+    echo "Exit Status: $status"
+    echo "${stripped_output} -> ${expected_output}"
+    # Assertions
+    [ "$stripped_output" = "$expected_output" ]
+}
+
+@test "Pipe to invalid command" {
+    run "./dsh" <<EOF
+echo hello | invalid_command
+EOF
+    stripped_output=$(echo "$output" | tr -d '[:space:]')
+    expected_output="execvp:Nosuchfileordirectorydsh3>dsh3>dsh3>cmdloopreturned0"
+     echo "Captured stdout:" 
+    echo "Output: $output"
+    echo "Exit Status: $status"
+    echo "${stripped_output} -> ${expected_output}"
+    [ "$stripped_output" = "$expected_output" ]
+}
+
+@test "Pipe with empty string input" {
+    run "./dsh" <<EOF
+echo "" | grep hello
+EOF
+    stripped_output=$(echo "$output" | tr -d '[:space:]')
+    expected_output="dsh3>dsh3>cmdloopreturned0"
+    echo "Captured stdout:" 
+    echo "Output: $output"
+    echo "Exit Status: $status"
+    echo "${stripped_output} -> ${expected_output}"
+    [ "$stripped_output" = "$expected_output" ]
+}
+
+@test "Command with multiple arguments (proper space handling)" {
+    run "./dsh" <<EOF
+echo hello world
+EOF
+    stripped_output=$(echo "$output" | tr -d '[:space:]')
+    expected_output="helloworlddsh3>dsh3>cmdloopreturned0"
+    echo "Captured stdout:" 
+    echo "Output: $output"
+    echo "Exit Status: $status"
+    echo "${stripped_output} -> ${expected_output}"
+    [ "$stripped_output" = "$expected_output" ]
+}
+
+
 
 
 

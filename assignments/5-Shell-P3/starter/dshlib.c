@@ -62,83 +62,79 @@ int isAllSpaces(const char *str) {
     return 1;
 }
 
-void trimSpaces(char *str) {
-    while (*str && isspace((unsigned char)*str)) str++;
-    char *end = str + strlen(str) - 1;
-    while (end > str && isspace((unsigned char)*end)) end--;
-    *(end + 1) = '\0'; 
-}
-
-
-int executeExternalCommand(cmd_buff_t* cmd_buff){
-    pid_t pid = fork();
-    if(pid == 0){
-        if(execvp(cmd_buff->argv[0], cmd_buff->argv) == -1){
-            return ERR_EXEC_CMD;
-        }
-    }
-    else{
-        int status;
-        waitpid(pid, &status, 0);
-        if(WIFEXITED(status)){
-            return OK;
-        }
-        else{
-            return ERR_EXEC_CMD;
-        }
-    }
-    return OK;
-}
-
-
 void executePipeCommands(command_list_t *clist) {
     int numCommands = clist->num;
-    int pipeFds[2 * (numCommands - 1)];
+    int pipefds[2 * (numCommands - 1)];
 
     for (int i = 0; i < numCommands - 1; i++) {
-        if (pipe(pipeFds + i * 2) == -1) {
+        if (pipe(pipefds + i * 2) == -1) {
             perror("pipe");
             return;
         }
     }
 
     for (int i = 0; i < numCommands; i++) {
-        pid_t pid = fork();
-        if (pid == 0) {
-            if (i > 0) {
-                if (dup2(pipeFds[(i - 1) * 2], STDIN_FILENO) == -1) {
-                    perror("dup2 input");
+        cmd_buff_t *cmd_buff = &clist->commands[i];
+        char *commandName = cmd_buff->argv[0];
+
+        if (strcmp("dragon", commandName) == 0) {
+            print_dragon();
+            return;
+        }
+        else if (strcmp("cd", commandName) == 0) {
+            if (!cmd_buff->argv[1]) {
+                return;
+            }
+            else if (chdir(cmd_buff->argv[1]) != 0) {
+                perror("cd");
+            }
+            return;
+        }
+        else if (strcmp("exit", commandName) == 0) {
+            exit(EXIT_SUCCESS);
+        }
+        else {
+            pid_t pid = fork();
+            if (pid == 0) {
+                if (i > 0) {
+                    if (dup2(pipefds[(i - 1) * 2], STDIN_FILENO) == -1) {
+                        perror("dup2 input");
+                        exit(1);
+                    }
+                }
+
+                if (i < numCommands - 1) {
+                    if (dup2(pipefds[i * 2 + 1], STDOUT_FILENO) == -1) {
+                        perror("dup2 output");
+                        exit(1);
+                    }
+                }
+
+                for (int j = 0; j < 2 * (numCommands - 1); j++) {
+                    close(pipefds[j]);
+                }
+
+                if (execvp(cmd_buff->argv[0], cmd_buff->argv) == -1) {
+                    perror("execvp");
                     exit(1);
                 }
-            }
-
-            if (i < numCommands - 1) {
-                if (dup2(pipeFds[i * 2 + 1], STDOUT_FILENO) == -1) {
-                    perror("dup2 output");
-                    exit(1);
-                }
-            }
-
-            for (int j = 0; j < 2 * (numCommands - 1); j++) {
-                close(pipeFds[j]);
-            }
-
-            if (execvp(clist->commands[i].argv[0], clist->commands[i].argv) == -1) {
-                perror("execvp");
-                exit(1);
             }
         }
     }
 
     for (int i = 0; i < 2 * (numCommands - 1); i++) {
-        close(pipeFds[i]);
+        close(pipefds[i]);
     }
 
     for (int i = 0; i < numCommands; i++) {
-        wait(NULL);
+        pid_t pid;
+        int status;
+        pid = waitpid(-1, &status, 0);
+        if (pid == -1) {
+            perror("waitpid");
+        }
     }
 }
-
 
 
 
@@ -146,7 +142,7 @@ int build_cmd_list(char *cmd_line, command_list_t *clist) {
     int commandCount = 0;
     char* commandPointer;
 
-    while ((commandPointer = strtok_r(cmd_line, "|", &cmd_line)) != NULL) {
+    while ((commandPointer = strtok_r(cmd_line, PIPE_STRING, &cmd_line)) != NULL) {
         command_t newCommand;
         memset(&newCommand, 0, sizeof(command_t));
 
@@ -160,13 +156,16 @@ int build_cmd_list(char *cmd_line, command_list_t *clist) {
 
         char* subPointer = strtok_r(commandPointer, " ", &commandPointer);
         if (subPointer != NULL) {
-            strcpy(newCommand.exe, subPointer);
+            strncpy(newCommand.exe, subPointer, EXE_MAX - 1);
         }
 
+        int argIndex = 0;
         while ((subPointer = strtok_r(commandPointer, " ", &commandPointer)) != NULL) {
-            int argSize = sizeof(newCommand.args) - 1;
+            if (argIndex > 0) {
+                strcat(newCommand.args, " ");
+            }
             strcat(newCommand.args, subPointer);
-            newCommand.args[argSize] = '\0';
+            argIndex++;
         }
 
         cmd_buff_t cmd_buff;
@@ -176,11 +175,7 @@ int build_cmd_list(char *cmd_line, command_list_t *clist) {
         int arg_idx = 1;
         char *arg = strtok(newCommand.args, " ");
         while (arg != NULL) {
-            if (strncmp(arg, "-e", 2) == 0) {
-                cmd_buff.argv[arg_idx++] = strdup(arg);
-            } else {
-                cmd_buff.argv[arg_idx++] = strdup(arg);
-            }
+            cmd_buff.argv[arg_idx++] = strdup(arg);
             arg = strtok(NULL, " ");
         }
 
