@@ -355,6 +355,25 @@ EOF
     [ "$stripped_output" = "$expected_output" ]
 }
 
+@test "Cant go past 8 commands in a pipeline" {
+    run "./dsh" <<EOF
+echo command1 | echo command2 | echo command3 | echo command4 | echo command5 | echo command6 | echo command7 | echo command8 | echo command9
+EOF
+
+    # Strip all whitespace (spaces, tabs, newlines) from the output
+    stripped_output=$(echo "$output" | tr -d '[:space:]')
+
+    # Expected output indicating too many commands (you can customize this message)
+    expected_output="dsh3>error:pipinglimitedto8commandsdsh3>cmdloopreturned0"
+
+    # Assertions
+     echo "Captured stdout:" 
+    echo "Output: $output"
+    echo "Exit Status: $status"
+    echo "${stripped_output} -> ${expected_output}"
+    [ "$stripped_output" = "$expected_output" ]
+}
+
 
 
 
