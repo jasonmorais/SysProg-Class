@@ -88,13 +88,13 @@
  */
 int exec_remote_cmd_loop(char *address, int port)
 {
-    cmd_buff_t *cmd_buff;  // Change to correct type
+    char *cmd_buff;
     char *rsp_buff;
     int cli_socket;
     ssize_t io_size;
     int is_eof;
 
-    cmd_buff = malloc(sizeof(cmd_buff_t));
+    cmd_buff = malloc(SH_CMD_MAX);
     rsp_buff = malloc(SH_CMD_MAX);
 
     if(!cmd_buff || !rsp_buff){
@@ -116,11 +116,13 @@ int exec_remote_cmd_loop(char *address, int port)
         }
 
         rsp_buff[strcspn(rsp_buff, "\n")] = 0;
-        if(build_cmd_buff(rsp_buff, cmd_buff) != OK){
-            fprintf(stderr, "Building buff error");
-            continue;
-        }
-
+        // cmd_buff_t* cmd_buff_structure;
+        // cmd_buff_structure = malloc(sizeof(cmd_buff_t));
+        // strcpy(cmd_buff_structure->_cmd_buffer, cmd_buff);
+        // if(build_cmd_buff(rsp_buff, cmd_buff_structure) != OK){
+        //     fprintf(stderr, "Building buff error");
+        //     continue;
+        // }
         if (send(cli_socket, rsp_buff, strlen(rsp_buff) + 1, 0) == -1) {
             perror("send");
             return client_cleanup(cli_socket, (char *)cmd_buff, rsp_buff, ERR_RDSH_COMMUNICATION);
@@ -145,7 +147,7 @@ int exec_remote_cmd_loop(char *address, int port)
                 break;
             }
         }
-        if (strncmp(cmd_buff->_cmd_buffer, EXIT_CMD, strlen(EXIT_CMD)) == 0 || strncmp(cmd_buff->_cmd_buffer, "stop-server", 11) == 0) {
+        if (strncmp(cmd_buff, EXIT_CMD, strlen(EXIT_CMD)) == 0 || strncmp(cmd_buff, "stop-server", 11) == 0) {
             break;
         }
     }
@@ -180,7 +182,7 @@ int exec_remote_cmd_loop(char *address, int port)
 int start_client(char *server_ip, int port){
     struct sockaddr_in addr;
     int cli_socket;
-    int ret;
+    // int ret;
 
     // TODO set up cli_socket
     cli_socket = socket(AF_INET, SOCK_STREAM, 0);

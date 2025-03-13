@@ -264,8 +264,8 @@
         int io_size;
         command_list_t cmd_list;
         int rc;
-        int cmd_rc;
-        int last_rc;
+        // int cmd_rc;
+        // int last_rc;
         char *io_buff;
 
         io_buff = malloc(RDSH_COMM_BUFF_SZ);
@@ -298,18 +298,19 @@
                 send_message_string(cli_socket, "Invalid Command");
                 send_message_eof(cli_socket);
                 continue;
-            }
-
+            }    
             rc = rsh_execute_pipeline(cli_socket, &cmd_list);
+            
             if(rc < 0){
-                send_message_string(cli_socket, "Execution failure");
+                send_message_string(cli_socket, "Execution failure\n");
                 send_message_eof(cli_socket);
                 continue;
             }
 
-            send_message_string(cli_socket, "Successful Execution");
+            send_message_string(cli_socket, "Successful Execution\n");
             send_message_eof(cli_socket);
-            if(rc == BI_CMD_EXIT){
+
+            if(rc == BI_CMD_EXIT_SEPERATE){
                 send_message_string(cli_socket, "Closing Session");
                 send_message_eof(cli_socket);
                 break;
@@ -321,8 +322,6 @@
                 free(io_buff);
                 return OK_EXIT;
             }
-
-
         }
 
         return WARN_RDSH_NOT_IMPL;
@@ -422,8 +421,7 @@
     int rsh_execute_pipeline(int cli_sock, command_list_t *clist) {
         int pipes[clist->num - 1][2];  // Array of pipes
         pid_t pids[clist->num];
-        int  pids_st[clist->num];         // Array to store process IDs
-        Built_In_Cmds bi_cmd;
+        int pids_st[clist->num];         // Array to store process statuses
         int exit_code;
 
         // Create all necessary pipes
@@ -435,41 +433,61 @@
         }
 
         for (int i = 0; i < clist->num; i++) {
-            // TODO this is basically the same as the piped fork/exec assignment, except for where you connect the begin and end of the pipeline (hint: cli_sock)
+            cmd_buff_t *cmd_buff = &clist->commands[i];
+            char *commandName = cmd_buff->argv[0];
 
-            // TODO HINT you can dup2(cli_sock with STDIN_FILENO, STDOUT_FILENO, etc.
-            pids[i] = fork();
-            if (pids[i] == -1){
-                perror("fork");
-                exit(EXIT_FAILURE);
-            }
-
-            if(pids[i] == 0){
-                if(i > 0 && dup2(pipes[i - 1][0], STDIN_FILENO) == -1){
-                    perror("dup2 stdin");
+            if (strcmp("dragon", commandName) == 0) {
+                print_dragon();
+                return 0;
+            } else if (strcmp("cd", commandName) == 0) {
+                if (cmd_buff->argv[1]) {
+                    if (chdir(cmd_buff->argv[1]) != 0) {
+                        perror("cd");
+                    }
+                } else {
+                    fprintf(stderr, "cd: missing argument\n");
+                }
+                return 0;
+            } else if (strcmp("exit", commandName) == 0) {
+                return BI_CMD_EXIT_SEPERATE;
+            } 
+            else if (strcmp("stop-server", commandName) == 0)
+                return BI_CMD_STOP_SVR;
+            else {
+                pids[i] = fork();
+                if (pids[i] == -1) {
+                    perror("fork");
                     exit(EXIT_FAILURE);
                 }
 
-                if(i < clist->num - 1 && dup2(pipes[i][1], STDOUT_FILENO) == -1){
-                    perror("dup2 stdout");
-                    exit(EXIT_FAILURE);
+                if (pids[i] == 0) {
+                    if (i > 0 && dup2(pipes[i - 1][0], STDIN_FILENO) == -1) {
+                        perror("dup2 stdin");
+                        exit(EXIT_FAILURE);
+                    }
 
+                    if (i < clist->num - 1 && dup2(pipes[i][1], STDOUT_FILENO) == -1) {
+                        perror("dup2 stdout");
+                        exit(EXIT_FAILURE);
+                    }
+
+                    if (i == 0 && dup2(cli_sock, STDIN_FILENO) == -1) {
+                        perror("dup2 stdin socket");
+                        exit(EXIT_FAILURE);
+                    }
+
+                    for (int j = 0; j < clist->num - 1; j++) {
+                        close(pipes[j][0]);
+                        close(pipes[j][1]);
+                    }
+
+                    if (execvp(cmd_buff->argv[0], cmd_buff->argv) == -1) {
+                        perror("execvp");
+                        exit(EXIT_FAILURE);
+                    }
                 }
-
-                if(i == 0 && dup2(cli_sock, STDIN_FILENO) == -1){
-                    perror("dup2 stdin socket");
-                    exit(EXIT_FAILURE);
-                }
-
-                char *cmd_args[] = { clist->commands[i][0], NULL };
-                if (execvp(clist->commands[i][0], cmd_args) == -1) {
-                    perror("execvp")
-                    exit(EXIT_FAILURE);
-                }
-
             }
         }
-
 
         // Parent process: close all pipe ends
         for (int i = 0; i < clist->num - 1; i++) {
@@ -482,17 +500,17 @@
             waitpid(pids[i], &pids_st[i], 0);
         }
 
-        //by default get exit code of last process
-        //use this as the return value
         exit_code = WEXITSTATUS(pids_st[clist->num - 1]);
+
         for (int i = 0; i < clist->num; i++) {
-            //if any commands in the pipeline are EXIT_SC
-            //return that to enable the caller to react
-            if (WEXITSTATUS(pids_st[i]) == EXIT_SC)
+            if (WEXITSTATUS(pids_st[i]) == EXIT_SC) {
                 exit_code = EXIT_SC;
+            }
         }
+
         return exit_code;
     }
+
 
     /**************   OPTIONAL STUFF  ***************/
     /****

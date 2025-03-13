@@ -71,6 +71,7 @@ typedef enum {
     BI_CMD_CD,
     BI_CMD_RC,              //extra credit command
     BI_CMD_STOP_SVR,        //new command "stop-server"
+    BI_CMD_EXIT_SEPERATE,
     BI_NOT_BI,
     BI_EXECUTED,
 } Built_In_Cmds;
